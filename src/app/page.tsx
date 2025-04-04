@@ -13,8 +13,8 @@ export default function Home() {
           height={38}
           priority
         />
-        <TodoList />
       </main>
+      <TodoList />
     </div>
   );
 }
