@@ -1,32 +1,66 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { supabase } from "@/app/lib/supabase";
 import AddTodo from "./AddTodo";
 import TodoItem from "./TodoItem";
 
+interface Task {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
 export default function TodoList() {
-  const [tasks, setTasks] = useState<
-    { id: string; text: string; done: boolean }[]
-  >([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
-  const addTask = (text: string) => {
-    setTasks([...tasks, { id: Date.now().toString(), text, done: false }]);
-  };
+  // Fetch tasks on load
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const { data } = await supabase.from("todos").select("*");
+      setTasks(data || []);
+    };
+    fetchTasks();
 
-  const toggleTask = (id: string) => {
-    setTasks(
-      tasks.map((task) =>
-        task.id === id ? { ...task, done: !task.done } : task
+    // Real-time updates
+    const channel = supabase
+      .channel("todos")
+      .on("postgres_changes", { event: "*", schema: "public" }, () =>
+        fetchTasks()
       )
-    );
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Add task
+  const addTask = async (text: string) => {
+    const { data } = await supabase.from("todos").insert([{ text }]).select();
+    if (data) setTasks([...tasks, data[0]]);
   };
 
-  const deleteTask = (id: string) => {
-    setTasks(tasks.filter((task) => task.id !== id));
+  // Toggle task
+  const toggleTask = async (id: string) => {
+    const task = tasks.find((t) => t.id === id);
+    const { data } = await supabase
+      .from("todos")
+      .update({ done: !task?.done })
+      .eq("id", id)
+      .select();
+    if (data) {
+      setTasks(tasks.map((t) => (t.id === id ? data[0] : t)));
+    }
+  };
+
+  // Delete task
+  const deleteTask = async (id: string) => {
+    await supabase.from("todos").delete().eq("id", id);
+    setTasks(tasks.filter((t) => t.id !== id));
   };
 
   return (
     <div className="max-w-md mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Todo App</h1>
       <AddTodo onAdd={addTask} />
       <div className="space-y-2">
         {tasks.map((task) => (
