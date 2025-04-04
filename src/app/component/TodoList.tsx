@@ -36,8 +36,30 @@ export default function TodoList() {
 
   // Add task
   const addTask = async (text: string) => {
-    const { data } = await supabase.from("todos").insert([{ text }]).select();
-    if (data) setTasks([...tasks, data[0]]);
+    if (!text.trim()) return;
+
+    const { data, error } = await supabase
+      .from("todos")
+      .insert([
+        {
+          text,
+          done: false,
+          created_at: new Date().toISOString(),
+        },
+      ])
+      .select("*"); // Explicitly select all fields
+
+    console.log("INSERT RESULT:", { data, error }); // Debug log
+
+    if (error) {
+      console.error("Insert error:", error);
+      alert(`Failed to add task: ${error.message}`);
+      return;
+    }
+
+    if (data && data[0]) {
+      setTasks([...tasks, data[0]]);
+    }
   };
 
   // Toggle task
@@ -78,7 +100,6 @@ export default function TodoList() {
         >
           Test Supabase
         </button>
-        ;
       </div>
     </div>
   );
