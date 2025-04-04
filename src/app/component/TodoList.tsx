@@ -71,6 +71,14 @@ export default function TodoList() {
             onDelete={deleteTask}
           />
         ))}
+        <button
+          onClick={() => {
+            supabase.from("todos").select("*").then(console.log);
+          }}
+        >
+          Test Supabase
+        </button>
+        ;
       </div>
     </div>
   );
